@@ -1,0 +1,102 @@
+# ========================================================
+# Docker Compose Configuration - ระบบจัดการห้องสมุด
+# ========================================================
+# ไฟล์นี้ใช้สำหรับการจัดการ PHP web application, MySQL database, และ phpMyAdmin
+version: "3.8"
+
+services:
+  # ========================================================
+  # Web Service: แอปพลิเคชัน PHP
+  # ========================================================
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: library_web
+    # แอปพลิเคชัน Web ทำงานที่ localhost:8080
+    ports:
+      - "8080:80"
+    volumes:
+      # โหลด Source Code สำหรับการพัฒนา (Live Development)
+      - ./src:/var/www/html
+    depends_on:
+      - db
+    # ตัวแปรสำหรับเชื่อมต่อฐานข้อมูล
+    environment:
+      - DB_HOST=db
+      - DB_USER=library_user
+      - DB_PASSWORD=library_pass
+      - DB_NAME=library_db
+    # นโยบายการรีสตาร์ทสำหรับการใช้งานจริง
+    restart: unless-stopped
+    # เครือข่ายสำหรับการสื่อสารระหว่าง services
+    networks:
+      - library-network
+
+  # ========================================================
+  # Database Service: MySQL
+  # ========================================================
+  db:
+    image: mysql:8.0
+    container_name: library_db
+    # MySQL Server ทำงานที่ localhost:3306
+    ports:
+      - "3306:3306"
+    # ตัวแปรสำหรับเริ่มต้นฐานข้อมูล
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=library_db
+      - MYSQL_USER=library_user
+      - MYSQL_PASSWORD=library_pass
+    # Volume สำหรับเก็บข้อมูลแบบถาวร
+    volumes:
+      # ที่เก็บข้อมูล MySQL แบบถาวร
+      - db_data:/var/lib/mysql
+      # สคริปต์ SQL สำหรับเริ่มต้นฐานข้อมูล (./database/init.sql)
+      - ./database:/docker-entrypoint-initdb.d
+    # นโยบายการรีสตาร์ทสำหรับการใช้งานจริง
+    restart: unless-stopped
+    networks:
+      - library-network
+    # ตรวจสอบสุขภาพและการเริ่มต้น
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # ========================================================
+  # Database Admin Panel: phpMyAdmin
+  # ========================================================
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: library_phpmyadmin
+    # phpMyAdmin ทำงานที่ localhost:8081
+    ports:
+      - "8081:80"
+    # การตั้งค่าเชื่อมต่อฐานข้อมูล
+    environment:
+      - PMA_HOST=db
+      - PMA_USER=root
+      - PMA_PASSWORD=root_password
+    depends_on:
+      - db
+    # นโยบายการรีสตาร์ทสำหรับการใช้งานจริง
+    restart: unless-stopped
+    networks:
+      - library-network
+
+# ========================================================
+# Named Volumes: ที่เก็บข้อมูลตั้งชื่อไว้
+# ========================================================
+volumes:
+  # Volume สำหรับ MySQL ช่วยให้ข้อมูลคงอยู่เมื่อรีสตาร์ท Container
+  db_data:
+    driver: local
+
+# ========================================================
+# Custom Network: เครือข่ายที่กำหนดเอง
+# ========================================================
+# เครือข่ายสำหรับการสื่อสารระหว่าง Services
+networks:
+  library-network:
+    driver: bridge

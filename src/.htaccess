@@ -1,0 +1,14 @@
+# เปิดใช้งาน mod_rewrite สำหรับ URL rewriting
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>
+
+# บอก Apache ให้ Process ไฟล์ .php ด้วย PHP handler
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# ป้องกัน .htaccess ถูกเข้าถึง
+<FilesMatch "^\.ht">
+    Deny from all
+</FilesMatch>
